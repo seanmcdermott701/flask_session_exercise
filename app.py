@@ -1,15 +1,15 @@
-from flask import Flask, request, flash, render_template, redirect
+from flask import Flask, request, flash, render_template, redirect, session
 from flask_debugtoolbar import DebugToolbarExtension
 from surveys import satisfaction_survey as sat_surv
 
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'VSECRET'
+app.config['SECRET_KEY'] = 'VERYSECRET'
 app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
 
 debug = DebugToolbarExtension(app)
 
-responses = []
+
 
 @app.route('/')
 def get_start_home():
@@ -17,15 +17,22 @@ def get_start_home():
     instructions = sat_surv.instructions
     return render_template('base.html', title=title, instructions=instructions)
 
+# Why does this need to be POST method? Potentially to create the session "dict"?
+@app.route('/start', methods=["POST"])
+def start():
+    session["responses"] = []
+
+    return redirect('/questions/0')
+
 @app.route('/questions/<id>')
 def get_question_page(id):
     id = int(id)
 
-    if (id != len(responses)):
+    if (id != len(session['responses'])):
         flash("You're trying to access an invalid question as part of your redirect.")
-        return redirect(f'/questions/{len(responses)}')
+        return redirect(f'/questions/{len(session["responses"])}')
 
-    if (len(sat_surv.questions) == len(responses)):
+    if (len(sat_surv.questions) == len(session['responses'])):
         return redirect('/thank_you')
 
     else:
@@ -37,8 +44,10 @@ def get_question_page(id):
 @app.route('/answer', methods=['POST'])
 def post_answer():
     answer = request.form['answers']
+    responses = session['responses']
     responses.append(answer)
-    if len(responses) == len(sat_surv.questions):
+    session['responses'] = responses
+    if (len(responses) == len(sat_surv.questions)):
         return redirect('/thank_you')
 
     else:
